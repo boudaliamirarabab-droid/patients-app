@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>سجل المرضى</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#3b82f6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="سجل المرضى">
+<link rel="apple-touch-icon" href="./icon.svg">
+
+<!-- Google Fonts — يُخزَّن في cache بعد أول فتح -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0b1120;
+    --surface: #111827;
+    --card: #1a2235;
+    --border: #1f2f4a;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --accent-glow: rgba(59,130,246,0.18);
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --radius: 14px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Cairo', 'Tahoma', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    direction: rtl;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(59,130,246,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 90%, rgba(6,182,212,0.06) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .container {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 20px 14px 80px;
+    position: relative; z-index: 1;
+  }
+
+  /* Install banner */
+  #install-banner {
+    display: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(59,130,246,0.35);
+  }
+  #install-banner.visible { display: flex; }
+  #install-banner span { flex: 1; font-size: 0.88rem; font-weight: 600; color: #fff; }
+  .btn-install {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-dismiss {
+    background: none; border: none; color: rgba(255,255,255,0.7);
+    font-size: 1.1rem; cursor: pointer; padding: 4px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 12px;
+    box-shadow: 0 0 28px rgba(59,130,246,0.35);
+  }
+  h1 {
+    font-size: 1.7rem; font-weight: 900;
+    background: linear-gradient(135deg, #fff 30%, var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle { color: var(--muted); font-size: 0.84rem; margin-top: 5px; }
+
+  /* Bottom nav tabs (mobile style) */
+  .tabs {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 50;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .tab {
+    flex: 1; padding: 12px 8px 10px;
+    border: none; background: transparent;
+    color: var(--muted);
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.78rem; font-weight: 600;
+    cursor: pointer;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+    transition: color 0.2s;
+  }
+  .tab-icon { font-size: 1.3rem; }
+  .tab.active { color: var(--accent); }
+  .tab.active .tab-icon { filter: drop-shadow(0 0 6px rgba(59,130,246,0.6)); }
+
+  .count-badge {
+    background: var(--accent);
+    color: #fff; border-radius: 20px;
+    padding: 0px 7px; font-size: 0.7rem;
+    position: absolute; top: 6px;
+  }
+  .tab { position: relative; }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 1rem; font-weight: 700;
+    margin-bottom: 18px; color: #fff;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title span { color: var(--accent2); }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 13px;
+  }
+  @media(max-width: 420px) { .form-grid { grid-template-columns: 1fr; } }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  label { font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+
+  input, textarea, select {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 13px;
+    color: var(--text);
+    font-family: 'Cairo', 'Tahoma', sans-serif;
+    font-size: 0.93rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    direction: rtl; width: 100%;
+    -webkit-appearance: none;
+  }
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  textarea { min-height: 80px; resize: vertical; }
+
+  .btn {
+    padding: 12px 22px;
+    border: none; border-radius: 10px;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.93rem; font-weight: 700;
+    transition: all 0.2s;
+    touch-action: manipulation;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    box-shadow: 0 2px 14px rgba(59,130,246,0.3);
+    width: 100%;
+  }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-ghost {
+    background: var(--surface);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    width: 100%;
+  }
+  .btn-danger {
+    background: rgba(239,68,68,0.12);
+    color: var(--danger);
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+  .btn-edit {
+    background: rgba(59,130,246,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(59,130,246,0.2);
+  }
+  .btn-sm { padding: 7px 12px; font-size: 0.8rem; border-radius: 8px; }
+  .form-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 70px; left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 22px;
+    font-weight: 600; font-size: 0.9rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    z-index: 999; transition: transform 0.3s ease;
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.success { color: var(--success); border-color: rgba(16,185,129,0.3); }
+  #toast.error   { color: var(--danger);  border-color: rgba(239,68,68,0.3); }
+
+  /* Search */
+  .search-hint {
+    font-size: 0.8rem; color: var(--muted);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  /* Stats */
+  .stats-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat-pill {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 30px; padding: 6px 14px; font-size: 0.82rem;
+    display: flex; align-items: center; gap: 6px; color: var(--muted);
+  }
+  .stat-pill strong { color: var(--text); }
+
+  /* Patient cards (mobile-friendly) */
+  .patient-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
+  }
+  .patient-card:hover { border-color: rgba(59,130,246,0.3); }
+
+  .pc-header {
+    display: flex; justify-content: space-between;
+    align-items: flex-start; margin-bottom: 10px;
+    gap: 10px;
+  }
+  .pc-name { font-size: 1rem; font-weight: 700; color: #fff; }
+  .pc-actions { display: flex; gap: 7px; flex-shrink: 0; }
+
+  .pc-info {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 7px;
+  }
+  .pc-field { font-size: 0.8rem; }
+  .pc-label { color: var(--muted); margin-bottom: 1px; }
+  .pc-value { color: var(--text); font-weight: 600; }
+  .pc-diag { grid-column: 1 / -1; }
+
+  .badge-diag {
+    display: inline-block;
+    background: rgba(6,182,212,0.1);
+    color: var(--accent2);
+    border: 1px solid rgba(6,182,212,0.2);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 0.82rem;
+    max-width: 100%;
+    word-break: break-word;
+  }
+
+  .empty-state {
+    text-align: center; padding: 50px 20px; color: var(--muted);
+  }
+  .empty-state .emoji { font-size: 2.5rem; margin-bottom: 10px; }
+  .empty-state p { font-size: 0.9rem; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 200;
+    align-items: flex-end; justify-content: center;
+    padding: 0;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px;
+    width: 100%; max-width: 700px;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .modal-title { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 18px; }
+
+  mark {
+    background: rgba(59,130,246,0.3);
+    color: var(--accent2);
+    border-radius: 3px; padding: 0 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Install Banner -->
+  <div id="install-banner">
+    <span>📲 ثبّت التطبيق على هاتفك للوصول السريع</span>
+    <button class="btn-install" id="btn-install-confirm">تثبيت</button>
+    <button class="btn-dismiss" id="btn-dismiss">✕</button>
+  </div>
+
+  <header>
+    <div class="header-icon">🏥</div>
+    <h1>سجل المرضى</h1>
+    <p class="subtitle">يعمل بدون إنترنت ✓</p>
+  </header>
+
+  <!-- ADD -->
+  <div class="section active" id="section-add">
+    <div class="card">
+      <div class="card-title"><span>👤</span> إضافة مريض جديد</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>الاسم (prénom)</label>
+          <input type="text" id="f-prenom" placeholder="أحمد" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>اللقب (nom)</label>
+          <input type="text" id="f-nom" placeholder="بن علي" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>رقم الهاتف</label>
+          <input type="tel" id="f-phone" placeholder="0555 000 000">
+        </div>
+        <div class="form-group">
+          <label>تاريخ الميلاد</label>
+          <input type="date" id="f-dob">
+        </div>
+        <div class="form-group full">
+          <label>التشخيص</label>
+          <textarea id="f-diag" placeholder="اكتب التشخيص هنا..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addPatient()">💾 حفظ المريض</button>
+        <button class="btn btn-ghost" onclick="clearForm()">🔄 مسح الحقول</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="section" id="section-search">
+    <div class="card">
+      <div class="card-title"><span>🔍</span> البحث الفوري</div>
+      <p class="search-hint">💡 ابحث بأي حقل أو بعدة حقول في نفس الوقت</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>الاسم</label>
+          <input type="text" id="s-prenom" oninput="doSearch()" placeholder="...">
+        </div>
+        <div class="form-group">
+          <label>اللقب</label>
+          <input type="text" id="s-nom" oninput="doSearch()" placeholder="...">
+        </div>
+        <div class="form-group">
+          <label>رقم الهاتف</label>
+          <input type="tel" id="s-phone" oninput="doSearch()" placeholder="...">
+        </div>
+        <div class="form-group">
+          <label>تاريخ الميلاد</label>
+          <input type="date" id="s-dob" oninput="doSearch()">
+        </div>
+        <div class="form-group full">
+          <label>التشخيص</label>
+          <input type="text" id="s-diag" oninput="doSearch()" placeholder="...">
+        </div>
+      </div>
+      <div style="margin-top:14px;">
+        <button class="btn btn-ghost" onclick="clearSearch()">🗑️ مسح البحث</button>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-pill">👥 الإجمالي: <strong id="totalCount">0</strong></div>
+      <div class="stat-pill">🔎 النتائج: <strong id="resultsCount">0</strong></div>
+    </div>
+
+    <div id="patientsList"></div>
+  </div>
+</div>
+
+<!-- Bottom nav -->
+<nav class="tabs">
+  <button class="tab active" id="tab-add" onclick="switchTab('add')">
+    <span class="tab-icon">➕</span>
+    إضافة
+  </button>
+  <button class="tab" id="tab-search" onclick="switchTab('search')">
+    <span class="tab-icon">🔍</span>
+    البحث
+    <span class="count-badge" id="totalBadge">0</span>
+  </button>
+</nav>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ تعديل بيانات المريض</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>الاسم</label>
+        <input type="text" id="e-prenom">
+      </div>
+      <div class="form-group">
+        <label>اللقب</label>
+        <input type="text" id="e-nom">
+      </div>
+      <div class="form-group">
+        <label>رقم الهاتف</label>
+        <input type="tel" id="e-phone">
+      </div>
+      <div class="form-group">
+        <label>تاريخ الميلاد</label>
+        <input type="date" id="e-dob">
+      </div>
+      <div class="form-group full">
+        <label>التشخيص</label>
+        <textarea id="e-diag"></textarea>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="saveEdit()">💾 حفظ التعديلات</button>
+      <button class="btn btn-ghost" onclick="closeModal()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'patients_db';
+let editingId = null;
+let deferredPrompt = null;
+
+// PWA Install
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').classList.add('visible');
+});
+
+document.getElementById('btn-install-confirm').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') showToast('تم التثبيت بنجاح 🎉');
+  deferredPrompt = null;
+  document.getElementById('install-banner').classList.remove('visible');
+});
+
+document.getElementById('btn-dismiss').addEventListener('click', () => {
+  document.getElementById('install-banner').classList.remove('visible');
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-banner').classList.remove('visible');
+  showToast('تم التثبيت بنجاح 🎉');
+});
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ---- Data ----
+function loadData() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+// ---- Toast ----
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = (type === 'success' ? '✅ ' : '❌ ') + msg;
+  t.className = 'show ' + type;
+  setTimeout(() => { t.className = ''; }, 2800);
+}
+
+// ---- Tabs ----
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-' + tab).classList.add('active');
+  if (tab === 'search') doSearch();
+}
+
+// ---- Add ----
+function addPatient() {
+  const prenom = document.getElementById('f-prenom').value.trim();
+  const nom    = document.getElementById('f-nom').value.trim();
+  const phone  = document.getElementById('f-phone').value.trim();
+  const dob    = document.getElementById('f-dob').value;
+  const diag   = document.getElementById('f-diag').value.trim();
+  if (!prenom && !nom) { showToast('أدخل الاسم أو اللقب على الأقل', 'error'); return; }
+  const data = loadData();
+  data.unshift({ id: uid(), prenom, nom, phone, dob, diag, createdAt: new Date().toISOString() });
+  saveData(data);
+  updateBadge();
+  clearForm();
+  showToast('تم حفظ المريض');
+}
+
+function clearForm() {
+  ['f-prenom','f-nom','f-phone','f-dob','f-diag'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ---- Delete ----
+function deletePatient(id) {
+  if (!confirm('هل تريد حذف هذا المريض؟')) return;
+  saveData(loadData().filter(p => p.id !== id));
+  updateBadge();
+  doSearch();
+  showToast('تم الحذف');
+}
+
+// ---- Edit ----
+function openEdit(id) {
+  const p = loadData().find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+  document.getElementById('e-prenom').value = p.prenom || '';
+  document.getElementById('e-nom').value    = p.nom    || '';
+  document.getElementById('e-phone').value  = p.phone  || '';
+  document.getElementById('e-dob').value    = p.dob    || '';
+  document.getElementById('e-diag').value   = p.diag   || '';
+  document.getElementById('editModal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('editModal').classList.remove('open');
+  editingId = null;
+}
+function saveEdit() {
+  if (!editingId) return;
+  const data = loadData();
+  const idx = data.findIndex(x => x.id === editingId);
+  if (idx === -1) return;
+  data[idx].prenom = document.getElementById('e-prenom').value.trim();
+  data[idx].nom    = document.getElementById('e-nom').value.trim();
+  data[idx].phone  = document.getElementById('e-phone').value.trim();
+  data[idx].dob    = document.getElementById('e-dob').value;
+  data[idx].diag   = document.getElementById('e-diag').value.trim();
+  saveData(data);
+  closeModal();
+  updateBadge();
+  doSearch();
+  showToast('تم التحديث');
+}
+
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ---- Search ----
+function hl(text, q) {
+  if (!q || !text) return text || '';
+  return text.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'), '<mark>$1</mark>');
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+
+function doSearch() {
+  const sp = (document.getElementById('s-prenom').value||'').trim().toLowerCase();
+  const sn = (document.getElementById('s-nom').value   ||'').trim().toLowerCase();
+  const sh = (document.getElementById('s-phone').value ||'').trim();
+  const sd = (document.getElementById('s-dob').value   ||'');
+  const sg = (document.getElementById('s-diag').value  ||'').trim().toLowerCase();
+
+  const data = loadData();
+  document.getElementById('totalCount').textContent = data.length;
+
+  const filtered = data.filter(p => {
+    if (sp && !(p.prenom||'').toLowerCase().includes(sp)) return false;
+    if (sn && !(p.nom   ||'').toLowerCase().includes(sn)) return false;
+    if (sh && !(p.phone ||'').includes(sh)) return false;
+    if (sd && p.dob !== sd) return false;
+    if (sg && !(p.diag  ||'').toLowerCase().includes(sg)) return false;
+    return true;
+  });
+
+  document.getElementById('resultsCount').textContent = filtered.length;
+
+  const list = document.getElementById('patientsList');
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="emoji">🔍</div><p>لا توجد نتائج مطابقة</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(p => `
+    <div class="patient-card">
+      <div class="pc-header">
+        <div class="pc-name">${hl(p.prenom,sp) || '—'} ${hl(p.nom,sn) || ''}</div>
+        <div class="pc-actions">
+          <button class="btn btn-edit btn-sm" onclick="openEdit('${p.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePatient('${p.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="pc-info">
+        <div class="pc-field">
+          <div class="pc-label">📞 الهاتف</div>
+          <div class="pc-value" style="direction:ltr;text-align:right;">${hl(p.phone,sh)||'—'}</div>
+        </div>
+        <div class="pc-field">
+          <div class="pc-label">🎂 تاريخ الميلاد</div>
+          <div class="pc-value">${formatDate(p.dob)}</div>
+        </div>
+        <div class="pc-field pc-diag">
+          <div class="pc-label">🩺 التشخيص</div>
+          <div class="pc-value"><span class="badge-diag">${hl(p.diag,sg)||'—'}</span></div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearSearch() {
+  ['s-prenom','s-nom','s-phone','s-dob','s-diag'].forEach(id => document.getElementById(id).value = '');
+  doSearch();
+}
+
+function updateBadge() {
+  const n = loadData().length;
+  document.getElementById('totalBadge').textContent = n;
+  document.getElementById('totalCount').textContent = n;
+}
+
+updateBadge();
+</script>
+</body>
+</html>
