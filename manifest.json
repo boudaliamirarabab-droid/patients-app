@@ -1,7 +1,7 @@
 {
   "name": "سجل المرضى",
-  "short_name": "مرضى",
-  "description": "تطبيق إدارة سجلات المرضى - يعمل بدون إنترنت",
+  "short_name": "المرضى",
+  "description": "تطبيق لإدارة سجلات مرضى المستشفى - يعمل بدون إنترنت",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
@@ -11,7 +11,7 @@
   "dir": "rtl",
   "icons": [
     {
-      "src": "icon.svg",
+      "src": "./icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
