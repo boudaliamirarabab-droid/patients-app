@@ -95,7 +95,7 @@ textarea{min-height:72px;resize:vertical}
 .factions{display:flex;flex-direction:column;gap:9px;margin-top:15px}
 
 /* ── toast ── */
-#toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 20px;font-weight:600;font-size:.86rem;box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:999;transition:transform .3s ease;white-space:nowrap;max-width:90vw;text-overflow:ellipsis;overflow:hidden}
+#toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 20px;font-weight:600;font-size:.86rem;box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:999;transition:transform .3s ease;white-space:nowrap;max-width:90vw;text-overflow:ellipsis;overflow:hidden}
 #toast.show{transform:translateX(-50%) translateY(0)}
 #toast.ok{color:var(--success);border-color:rgba(16,185,129,.3)}
 #toast.err{color:var(--danger);border-color:rgba(239,68,68,.3)}
@@ -398,7 +398,7 @@ function toast(msg,type='ok'){
   const el=document.getElementById('toast');
   el.textContent=(type==='ok'?'✅ ':'❌ ')+msg;
   el.className='show '+type;
-  setTimeout(()=>{el.className='';},2800);
+  setTimeout(()=>{el.className='';},1500);
 }
 
 // ── TABS ──────────────────────────────────────────────────────
@@ -458,8 +458,9 @@ function addP(){
   if(!fileNum||!prenom){toast(t('toast_req'),'err');return;}
   const data=load();
   data.unshift({id:uid(),fileNum,prenom,nom,phone,dob,address,diag,createdAt:new Date().toISOString()});
-  save(data);updBadge();clrF();toast(t('toast_saved'));
-setTimeout(()=>switchTab('search'),600);
+  save(data);updBadge();clrF();
+  switchTab('search');
+  toast(t('toast_saved'));
 }
 
 function clrF(){
@@ -588,24 +589,36 @@ function clrS(){
 }
 
 // ── PDF ───────────────────────────────────────────────────────
+// jsPDF ما يدعمش العربية — نحولو الحروف غير اللاتينية لـ ?
+function cleanTxt(str){
+  return (str||'').replace(/[^\x00-\x7E\u00C0-\u024F]/g,'?');
+}
 function expPDF(){
   const data=load();
   if(!data.length){toast(t('no_data'),'err');return;}
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-  doc.setFontSize(15);doc.setTextColor(40,40,40);
-  doc.text(t('pdf_title'),148,16,{align:'center'});
   const now=new Date().toLocaleDateString('fr-DZ');
-  doc.setFontSize(9);doc.setTextColor(100,100,100);
-  doc.text(`${t('pdf_date')} ${now}`,14,24);
-  doc.text(`${t('pdf_tot')} ${data.length}`,14,29);
   const ys=getYS(data);
   const yst=Object.entries(ys).sort().map(([y,c])=>`${y}: ${c}`).join('  |  ');
+  doc.setFontSize(15);doc.setTextColor(40,40,40);
+  doc.text('Liste des Patients',148,16,{align:'center'});
+  doc.setFontSize(9);doc.setTextColor(100,100,100);
+  doc.text(`Date: ${now}`,14,24);
+  doc.text(`Total: ${data.length}`,14,29);
   doc.text(yst,14,34);
   doc.autoTable({
     startY:38,
-    head:[[' # ',t('c1'),t('c2'),t('c3'),t('c4'),t('c5'),t('c6')]],
-    body:data.map((p,i)=>[i+1,p.fileNum||'',`${p.prenom||''} ${p.nom||''}`.trim(),p.phone||'',fmtD(p.dob),p.address||'',p.diag||'']),
+    head:[[' # ','N° Dossier','Prenom & Nom','Tel.','Date naiss.','Adresse','Diagnostic']],
+    body:data.map((p,i)=>[
+      i+1,
+      cleanTxt(p.fileNum),
+      cleanTxt(`${p.prenom||''} ${p.nom||''}`.trim()),
+      cleanTxt(p.phone),
+      fmtD(p.dob),
+      cleanTxt(p.address),
+      cleanTxt(p.diag)
+    ]),
     styles:{font:'helvetica',fontSize:8,cellPadding:3},
     headStyles:{fillColor:[59,130,246],textColor:255,fontStyle:'bold'},
     alternateRowStyles:{fillColor:[245,247,250]},
