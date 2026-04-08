@@ -1,4 +1,4 @@
-const CACHE_NAME = 'patients-v2';
+const CACHE_NAME = 'patients-v3';
 const FILES = [
   './index.html',
   './manifest.json',
@@ -11,7 +11,6 @@ const FILES = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      // نكاشو الملفات المحلية أولاً، والـ CDN بشكل منفصل باش ما يوقفش التطبيق
       const localFiles = FILES.filter(f => f.startsWith('./'));
       const cdnFiles   = FILES.filter(f => !f.startsWith('./'));
       return cache.addAll(localFiles).then(() =>
@@ -36,11 +35,19 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Firebase و Google APIs — نتركهم يمشيو للنت دايماً
+  const url = e.request.url;
+  if(url.includes('firestore.googleapis.com') ||
+     url.includes('firebase.googleapis.com') ||
+     url.includes('gstatic.com/firebasejs')){
+    e.respondWith(fetch(e.request).catch(() => new Response('', {status: 503})));
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(cached => {
       if(cached) return cached;
       return fetch(e.request).then(res => {
-        // نكاشو أي request جديد تلقائياً
         if(res && res.ok && res.type !== 'opaque'){
           const clone = res.clone();
           caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
