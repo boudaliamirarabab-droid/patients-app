@@ -32,6 +32,14 @@ body{font-family:'Cairo','Tahoma',sans-serif;background:var(--bg);color:var(--te
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 10%,rgba(59,130,246,.07) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 90%,rgba(6,182,212,.06) 0%,transparent 60%);pointer-events:none;z-index:0}
 .wrap{max-width:700px;margin:0 auto;padding:16px 14px 90px;position:relative;z-index:1}
 
+/* ── sync bar ── */
+#syncbar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 13px;margin-bottom:12px;font-size:.78rem;color:var(--muted)}
+#syncbar .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+#syncbar.online .dot{background:var(--success)}
+#syncbar.syncing .dot{background:var(--warning);animation:pulse 1s infinite}
+#syncbar.offline .dot{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
 /* ── lang bar ── */
 .lang-bar{display:flex;gap:8px;margin-bottom:12px}
 .lbtn{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 13px;font-family:'Cairo',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;color:var(--muted);transition:all .2s}
@@ -70,9 +78,13 @@ h1{font-size:1.55rem;font-weight:900;background:linear-gradient(135deg,#fff 30%,
 .fg.full{grid-column:1/-1}
 label{font-size:.77rem;font-weight:600;color:var(--muted)}
 .req{color:var(--danger);margin-right:2px}
-input,textarea{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:'Cairo','Tahoma',sans-serif;font-size:.9rem;transition:border-color .2s,box-shadow .2s;direction:rtl;width:100%;-webkit-appearance:none}
-input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+input,textarea,select{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:'Cairo','Tahoma',sans-serif;font-size:.9rem;transition:border-color .2s,box-shadow .2s;direction:rtl;width:100%;-webkit-appearance:none}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
 textarea{min-height:72px;resize:vertical}
+select option{background:var(--card);color:var(--text)}
+
+/* blood group badge */
+.blood-badge{display:inline-flex;align-items:center;justify-content:center;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:3px 10px;font-size:.82rem;font-weight:700}
 
 /* ── autocomplete ── */
 .acw{position:relative}
@@ -125,7 +137,7 @@ textarea{min-height:72px;resize:vertical}
 .pfu{grid-column:1/-1}
 .bdg{display:inline-block;background:rgba(6,182,212,.1);color:var(--accent2);border:1px solid rgba(6,182,212,.2);border-radius:8px;padding:3px 9px;font-size:.79rem;word-break:break-word}
 
-/* ── backup grid ── FIX: كانت grid-column بدل grid-template-columns */
+/* ── backup grid ── */
 .bgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:420px){.bgrid{grid-template-columns:1fr}}
 
@@ -151,6 +163,12 @@ mark{background:rgba(59,130,246,.3);color:var(--accent2);border-radius:3px;paddi
 </head>
 <body>
 <div class="wrap">
+
+<!-- sync bar -->
+<div id="syncbar" class="offline">
+  <div class="dot"></div>
+  <span id="syncmsg">جاري الاتصال...</span>
+</div>
 
 <!-- lang -->
 <div class="lang-bar">
@@ -203,6 +221,20 @@ mark{background:rgba(59,130,246,.3);color:var(--accent2);border-radius:3px;paddi
       <label data-t="lbl_dob">تاريخ الميلاد</label>
       <input id="fd" type="date">
     </div>
+    <div class="fg">
+      <label data-t="lbl_blood">زمرة الدم</label>
+      <select id="fb">
+        <option value="">— اختر —</option>
+        <option value="A+">A+</option>
+        <option value="A-">A-</option>
+        <option value="B+">B+</option>
+        <option value="B-">B-</option>
+        <option value="AB+">AB+</option>
+        <option value="AB-">AB-</option>
+        <option value="O+">O+</option>
+        <option value="O-">O-</option>
+      </select>
+    </div>
     <div class="fg full">
       <label data-t="lbl_address">مكان السكن</label>
       <div class="acw"><input id="fa" type="text" placeholder="الولاية / البلدية" autocomplete="off" oninput="aci(this,'fa')"><div class="acl" id="al-fa"></div></div>
@@ -235,7 +267,21 @@ mark{background:rgba(59,130,246,.3);color:var(--accent2);border-radius:3px;paddi
       <div class="fg"><label data-t="lbl_address">مكان السكن</label><input id="sa" oninput="doSearch()" placeholder="..."></div>
       <div class="fg"><label data-t="lbl_diag">التشخيص</label><input id="sg" oninput="doSearch()" placeholder="..."></div>
       <div class="fg"><label data-t="lbl_dob">تاريخ الميلاد</label><input id="sd" type="date" oninput="doSearch()"></div>
-      <div class="fg" style="justify-content:flex-end;margin-top:18px">
+      <div class="fg">
+        <label data-t="lbl_blood">زمرة الدم</label>
+        <select id="sb" onchange="doSearch()">
+          <option value="">— الكل —</option>
+          <option value="A+">A+</option>
+          <option value="A-">A-</option>
+          <option value="B+">B+</option>
+          <option value="B-">B-</option>
+          <option value="AB+">AB+</option>
+          <option value="AB-">AB-</option>
+          <option value="O+">O+</option>
+          <option value="O-">O-</option>
+        </select>
+      </div>
+      <div class="fg full" style="justify-content:flex-end;margin-top:4px">
         <button class="btn bg sm" onclick="clrS()">🗑️ <span data-t="btn_clear_search">مسح</span></button>
       </div>
     </div>
@@ -282,6 +328,20 @@ mark{background:rgba(59,130,246,.3);color:var(--accent2);border-radius:3px;paddi
       <div class="fg"><label data-t="lbl_nom">اللقب</label><input id="en" type="text"></div>
       <div class="fg"><label data-t="lbl_phone">الهاتف</label><input id="eh" type="tel"></div>
       <div class="fg"><label data-t="lbl_dob">تاريخ الميلاد</label><input id="ed" type="date"></div>
+      <div class="fg">
+        <label data-t="lbl_blood">زمرة الدم</label>
+        <select id="eb">
+          <option value="">— اختر —</option>
+          <option value="A+">A+</option>
+          <option value="A-">A-</option>
+          <option value="B+">B+</option>
+          <option value="B-">B-</option>
+          <option value="AB+">AB+</option>
+          <option value="AB-">AB-</option>
+          <option value="O+">O+</option>
+          <option value="O-">O-</option>
+        </select>
+      </div>
       <div class="fg full"><label data-t="lbl_address">مكان السكن</label><input id="ea" type="text"></div>
       <div class="fg full"><label data-t="lbl_diag">التشخيص</label><textarea id="eg"></textarea></div>
     </div>
@@ -294,6 +354,86 @@ mark{background:rgba(59,130,246,.3);color:var(--accent2);border-radius:3px;paddi
 
 <div id="toast"></div>
 
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAC-u059tq8sW0fAYUD0ICFsl3BnOBjd7k",
+  authDomain: "hopital-app-b624e.firebaseapp.com",
+  projectId: "hopital-app-b624e",
+  storageBucket: "hopital-app-b624e.firebasestorage.app",
+  messagingSenderId: "1001139113856",
+  appId: "1:1001139113856:web:873273d45f77c0565cfb65"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const COL = 'patients';
+
+// ── حالة الاتصال ──────────────────────────────────────────────
+function setSyncState(state, msg){
+  const bar = document.getElementById('syncbar');
+  const txt = document.getElementById('syncmsg');
+  bar.className = state;
+  txt.textContent = msg;
+}
+
+// ── كاش محلي + Firebase ──────────────────────────────────────
+const KEY = 'patients_db';
+const loadLocal = () => { try{ return JSON.parse(localStorage.getItem(KEY))||[]; }catch{ return[]; } };
+const saveLocal = d => localStorage.setItem(KEY, JSON.stringify(d));
+
+// نستمع لـ Firestore real-time
+setSyncState('syncing', window._T ? window._T('sync_connecting') : 'جاري الاتصال...');
+
+const q = query(collection(db, COL), orderBy('createdAt','desc'));
+onSnapshot(q,
+  snap => {
+    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    saveLocal(data);
+    window._fbReady = true;
+    setSyncState('online', window._T ? window._T('sync_online') : '🟢 متصل — البيانات محدّثة');
+    window.updBadge();
+    if(document.getElementById('s-search').classList.contains('on')){
+      window.doSearch();
+      window.renderStats();
+    }
+  },
+  err => {
+    console.warn('Firestore offline:', err);
+    setSyncState('offline', window._T ? window._T('sync_offline') : '🔴 غير متصل — يعمل محلياً');
+  }
+);
+
+// ── عمليات Firestore ──────────────────────────────────────────
+window._fbAdd = async (patient) => {
+  setSyncState('syncing', '⏳ جاري الحفظ...');
+  const { id, ...data } = patient;
+  await setDoc(doc(db, COL, id), data);
+};
+
+window._fbUpdate = async (id, patient) => {
+  setSyncState('syncing', '⏳ جاري التحديث...');
+  const { id: _id, ...data } = patient;
+  await updateDoc(doc(db, COL, id), data);
+};
+
+window._fbDelete = async (id) => {
+  setSyncState('syncing', '⏳ جاري الحذف...');
+  await deleteDoc(doc(db, COL, id));
+};
+
+window._fbImport = async (patients) => {
+  setSyncState('syncing', '⏳ جاري الاستيراد...');
+  for(const p of patients){
+    const { id, ...data } = p;
+    await setDoc(doc(db, COL, id), data);
+  }
+};
+</script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
@@ -305,7 +445,8 @@ ar:{
   export_title:'تصدير البيانات',import_title:'استرجاع البيانات',
   edit_title:'✏️ تعديل بيانات المريض',
   lbl_file:'رقم الملف',lbl_prenom:'الاسم',lbl_nom:'اللقب',
-  lbl_phone:'رقم الهاتف',lbl_dob:'تاريخ الميلاد',lbl_address:'مكان السكن',lbl_diag:'التشخيص',
+  lbl_phone:'رقم الهاتف',lbl_dob:'تاريخ الميلاد',lbl_address:'مكان السكن',
+  lbl_diag:'التشخيص',lbl_blood:'زمرة الدم',
   btn_save:'حفظ المريض',btn_clear:'مسح الحقول',btn_clear_search:'مسح',
   btn_save_edit:'حفظ التعديلات',btn_cancel:'إلغاء',
   btn_pdf:'تصدير PDF',btn_backup:'نسخة احتياطية',btn_import:'استيراد ملف',
@@ -322,8 +463,11 @@ ar:{
   conf_del:'هل تريد حذف هذا المريض؟',
   yr:'سنة',fl:'ملف',
   pdf_title:'قائمة المرضى',pdf_date:'تاريخ الطباعة:',pdf_tot:'إجمالي المرضى:',
-  c1:'رقم الملف',c2:'الاسم واللقب',c3:'الهاتف',c4:'ت. الميلاد',c5:'مكان السكن',c6:'التشخيص',
-  no_res:'لا توجد نتائج مطابقة',no_data:'لا توجد بيانات'
+  c1:'رقم الملف',c2:'الاسم واللقب',c3:'الهاتف',c4:'ت. الميلاد',c5:'زمرة الدم',c6:'مكان السكن',c7:'التشخيص',
+  no_res:'لا توجد نتائج مطابقة',no_data:'لا توجد بيانات',
+  sync_online:'🟢 متصل — البيانات محدّثة',
+  sync_offline:'🔴 غير متصل — يعمل محلياً',
+  sync_connecting:'⏳ جاري الاتصال...'
 },
 fr:{
   app_title:'Registre des Patients',app_sub:'Fonctionne sans Internet ✓',
@@ -331,7 +475,8 @@ fr:{
   export_title:'Exporter les données',import_title:'Restaurer les données',
   edit_title:'✏️ Modifier le patient',
   lbl_file:'N° Dossier',lbl_prenom:'Prénom',lbl_nom:'Nom',
-  lbl_phone:'Téléphone',lbl_dob:'Date de naissance',lbl_address:'Adresse',lbl_diag:'Diagnostic',
+  lbl_phone:'Téléphone',lbl_dob:'Date de naissance',lbl_address:'Adresse',
+  lbl_diag:'Diagnostic',lbl_blood:'Groupe sanguin',
   btn_save:'Enregistrer',btn_clear:'Effacer',btn_clear_search:'Effacer',
   btn_save_edit:'Sauvegarder',btn_cancel:'Annuler',
   btn_pdf:'Exporter PDF',btn_backup:'Sauvegarde',btn_import:'Importer',
@@ -348,12 +493,16 @@ fr:{
   conf_del:'Supprimer ce patient ?',
   yr:'Année',fl:'dossier(s)',
   pdf_title:'Liste des Patients',pdf_date:"Date d'impression:",pdf_tot:'Total:',
-  c1:'N° Dossier',c2:'Prénom & Nom',c3:'Tél.',c4:'Date naiss.',c5:'Adresse',c6:'Diagnostic',
-  no_res:'Aucun résultat',no_data:'Aucune donnée'
+  c1:'N° Dossier',c2:'Prénom & Nom',c3:'Tél.',c4:'Date naiss.',c5:'Groupe',c6:'Adresse',c7:'Diagnostic',
+  no_res:'Aucun résultat',no_data:'Aucune donnée',
+  sync_online:'🟢 Connecté — données à jour',
+  sync_offline:'🔴 Hors ligne — mode local',
+  sync_connecting:'⏳ Connexion...'
 }
 };
 let lang=localStorage.getItem('lang')||'ar';
 const t=k=>T[lang][k]||k;
+window._T = t;
 
 function setLang(l){
   lang=l;localStorage.setItem('lang',l);
@@ -371,10 +520,9 @@ function setLang(l){
   doSearch();renderStats();
 }
 
-// ── DATA ──────────────────────────────────────────────────────
+// ── DATA (محلي فقط للقراءة، Firebase للكتابة) ─────────────────
 const KEY='patients_db';
 const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||[];}catch{return[];}};
-const save=d=>localStorage.setItem(KEY,JSON.stringify(d));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2);
 
 // ── PWA ───────────────────────────────────────────────────────
@@ -447,33 +595,51 @@ document.addEventListener('click',e=>{
 });
 
 // ── ADD ───────────────────────────────────────────────────────
-function addP(){
-  const fileNum=document.getElementById('ff').value.trim();
-  const prenom =document.getElementById('fp').value.trim();
-  const nom    =document.getElementById('fn').value.trim();
-  const phone  =document.getElementById('fh').value.trim();
-  const dob    =document.getElementById('fd').value;
-  const address=document.getElementById('fa').value.trim();
-  const diag   =document.getElementById('fg').value.trim();
+async function addP(){
+  const fileNum = document.getElementById('ff').value.trim();
+  const prenom  = document.getElementById('fp').value.trim();
+  const nom     = document.getElementById('fn').value.trim();
+  const phone   = document.getElementById('fh').value.trim();
+  const dob     = document.getElementById('fd').value;
+  const blood   = document.getElementById('fb').value;
+  const address = document.getElementById('fa').value.trim();
+  const diag    = document.getElementById('fg').value.trim();
   if(!fileNum||!prenom){toast(t('toast_req'),'err');return;}
-  const data=load();
-  data.unshift({id:uid(),fileNum,prenom,nom,phone,dob,address,diag,createdAt:new Date().toISOString()});
-  save(data);updBadge();clrF();
-  switchTab('search');
-  toast(t('toast_saved'));
+  const patient = {id:uid(),fileNum,prenom,nom,phone,dob,blood,address,diag,createdAt:new Date().toISOString()};
+  try{
+    await window._fbAdd(patient);
+    clrF();
+    switchTab('search');
+    toast(t('toast_saved'));
+  }catch(e){
+    // فشل Firebase — نحفظ محلياً
+    const data=load();
+    data.unshift(patient);
+    localStorage.setItem(KEY,JSON.stringify(data));
+    updBadge();clrF();switchTab('search');
+    toast(t('toast_saved'));
+  }
 }
 
 function clrF(){
   ['ff','fp','fn','fh','fd','fa','fg'].forEach(id=>{
     const e=document.getElementById(id);if(e)e.value='';
   });
+  document.getElementById('fb').value='';
 }
 
 // ── DELETE ────────────────────────────────────────────────────
-function delP(id){
+async function delP(id){
   if(!confirm(t('conf_del')))return;
-  save(load().filter(p=>p.id!==id));
-  updBadge();doSearch();renderStats();toast(t('toast_deleted'));
+  try{
+    await window._fbDelete(id);
+    toast(t('toast_deleted'));
+  }catch{
+    const data=load().filter(p=>p.id!==id);
+    localStorage.setItem(KEY,JSON.stringify(data));
+    updBadge();doSearch();renderStats();
+    toast(t('toast_deleted'));
+  }
 }
 
 // ── EDIT ──────────────────────────────────────────────────────
@@ -486,23 +652,37 @@ function openEdit(id){
   document.getElementById('en').value=p.nom||'';
   document.getElementById('eh').value=p.phone||'';
   document.getElementById('ed').value=p.dob||'';
+  document.getElementById('eb').value=p.blood||'';
   document.getElementById('ea').value=p.address||'';
   document.getElementById('eg').value=p.diag||'';
   document.getElementById('emod').classList.add('open');
 }
 function closeM(){document.getElementById('emod').classList.remove('open');eid=null;}
-function saveEdit(){
+
+async function saveEdit(){
   if(!eid)return;
-  const data=load();
-  const i=data.findIndex(x=>x.id===eid);if(i===-1)return;
-  data[i].fileNum =document.getElementById('ef').value.trim();
-  data[i].prenom  =document.getElementById('ep').value.trim();
-  data[i].nom     =document.getElementById('en').value.trim();
-  data[i].phone   =document.getElementById('eh').value.trim();
-  data[i].dob     =document.getElementById('ed').value;
-  data[i].address =document.getElementById('ea').value.trim();
-  data[i].diag    =document.getElementById('eg').value.trim();
-  save(data);closeM();updBadge();doSearch();renderStats();toast(t('toast_updated'));
+  const patient={
+    id:eid,
+    fileNum : document.getElementById('ef').value.trim(),
+    prenom  : document.getElementById('ep').value.trim(),
+    nom     : document.getElementById('en').value.trim(),
+    phone   : document.getElementById('eh').value.trim(),
+    dob     : document.getElementById('ed').value,
+    blood   : document.getElementById('eb').value,
+    address : document.getElementById('ea').value.trim(),
+    diag    : document.getElementById('eg').value.trim(),
+  };
+  try{
+    await window._fbUpdate(eid, patient);
+    closeM();
+    toast(t('toast_updated'));
+  }catch{
+    const data=load();
+    const i=data.findIndex(x=>x.id===eid);
+    if(i>-1){Object.assign(data[i],patient);localStorage.setItem(KEY,JSON.stringify(data));}
+    closeM();updBadge();doSearch();renderStats();
+    toast(t('toast_updated'));
+  }
 }
 document.getElementById('emod').addEventListener('click',function(e){if(e.target===this)closeM();});
 
@@ -511,159 +691,4 @@ function getYS(data){
   const y={};
   data.forEach(p=>{
     const m=(p.fileNum||'').match(/\/(\d{2,4})$/);
-    if(m){const yr=m[1].length===2?'20'+m[1]:m[1];y[yr]=(y[yr]||0)+1;}
-  });
-  return y;
-}
-
-function renderStats(){
-  const data=load();
-  const ys=getYS(data);
-  const ny=Object.keys(ys).length;
-  document.getElementById('sgrid').innerHTML=`
-    <div class="scard"><div class="snum">${data.length}</div><div class="slbl">${t('stat_total')}</div></div>
-    <div class="scard"><div class="snum" style="color:var(--accent2)">${ny}</div><div class="slbl">${t('stat_years')}</div></div>`;
-  const sorted=Object.entries(ys).sort((a,b)=>a[0].localeCompare(b[0]));
-  document.getElementById('ys').innerHTML=sorted.map(([y,c])=>
-    `<div class="ypill">📅 ${t('yr')} <strong>${y}</strong> — <strong style="color:var(--accent)">${c}</strong> ${t('fl')}</div>`
-  ).join('');
-}
-
-// ── SEARCH ────────────────────────────────────────────────────
-function hl(txt,q){
-  if(!q||!txt)return txt||'';
-  return txt.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`,'gi'),'<mark>$1</mark>');
-}
-function fmtD(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
-
-function doSearch(){
-  const sf=(document.getElementById('sf')?.value||'').trim().toLowerCase();
-  const sp=(document.getElementById('sp')?.value||'').trim().toLowerCase();
-  const sn=(document.getElementById('sn')?.value||'').trim().toLowerCase();
-  const sh=(document.getElementById('sh')?.value||'').trim();
-  const sa=(document.getElementById('sa')?.value||'').trim().toLowerCase();
-  const sg=(document.getElementById('sg')?.value||'').trim().toLowerCase();
-  const sd=(document.getElementById('sd')?.value||'');
-  const data=load();
-  const res=data.filter(p=>{
-    if(sf&&!(p.fileNum ||'').toLowerCase().includes(sf))return false;
-    if(sp&&!(p.prenom  ||'').toLowerCase().includes(sp))return false;
-    if(sn&&!(p.nom     ||'').toLowerCase().includes(sn))return false;
-    if(sh&&!(p.phone   ||'').includes(sh))return false;
-    if(sa&&!(p.address ||'').toLowerCase().includes(sa))return false;
-    if(sg&&!(p.diag    ||'').toLowerCase().includes(sg))return false;
-    if(sd&&p.dob!==sd)return false;
-    return true;
-  });
-  document.getElementById('rc').textContent=res.length;
-  const list=document.getElementById('plist');
-  if(!res.length){
-    list.innerHTML=`<div class="empty"><div class="ico">🔍</div><p>${t('no_res')}</p></div>`;
-    return;
-  }
-  list.innerHTML=res.map(p=>`
-    <div class="pc">
-      <div class="pch">
-        <div>
-          <div class="pcn">${hl(p.prenom,sp)||'—'} ${hl(p.nom,sn)||''}</div>
-          <div class="pcf">📁 ${hl(p.fileNum,sf)||'—'}</div>
-        </div>
-        <div class="pca">
-          <button class="btn be sm" onclick="openEdit('${p.id}')">✏️</button>
-          <button class="btn bd sm" onclick="delP('${p.id}')">🗑️</button>
-        </div>
-      </div>
-      <div class="pci">
-        <div class="pf"><div class="pl">📞 ${t('lbl_phone')}</div><div class="pv" style="direction:ltr;text-align:right">${hl(p.phone,sh)||'—'}</div></div>
-        <div class="pf"><div class="pl">🎂 ${t('lbl_dob')}</div><div class="pv">${fmtD(p.dob)}</div></div>
-        <div class="pf pfu"><div class="pl">📍 ${t('lbl_address')}</div><div class="pv">${hl(p.address,sa)||'—'}</div></div>
-        <div class="pf pfu"><div class="pl">🩺 ${t('lbl_diag')}</div><div class="pv"><span class="bdg">${hl(p.diag,sg)||'—'}</span></div></div>
-      </div>
-    </div>`).join('');
-}
-function clrS(){
-  ['sf','sp','sn','sh','sa','sg','sd'].forEach(id=>{
-    const e=document.getElementById(id);if(e)e.value='';
-  });
-  doSearch();
-}
-
-// ── PDF ───────────────────────────────────────────────────────
-// jsPDF ما يدعمش العربية — نحولو الحروف غير اللاتينية لـ ?
-function cleanTxt(str){
-  return (str||'').replace(/[^\x00-\x7E\u00C0-\u024F]/g,'?');
-}
-function expPDF(){
-  const data=load();
-  if(!data.length){toast(t('no_data'),'err');return;}
-  const{jsPDF}=window.jspdf;
-  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-  const now=new Date().toLocaleDateString('fr-DZ');
-  const ys=getYS(data);
-  const yst=Object.entries(ys).sort().map(([y,c])=>`${y}: ${c}`).join('  |  ');
-  doc.setFontSize(15);doc.setTextColor(40,40,40);
-  doc.text('Liste des Patients',148,16,{align:'center'});
-  doc.setFontSize(9);doc.setTextColor(100,100,100);
-  doc.text(`Date: ${now}`,14,24);
-  doc.text(`Total: ${data.length}`,14,29);
-  doc.text(yst,14,34);
-  doc.autoTable({
-    startY:38,
-    head:[[' # ','N° Dossier','Prenom & Nom','Tel.','Date naiss.','Adresse','Diagnostic']],
-    body:data.map((p,i)=>[
-      i+1,
-      cleanTxt(p.fileNum),
-      cleanTxt(`${p.prenom||''} ${p.nom||''}`.trim()),
-      cleanTxt(p.phone),
-      fmtD(p.dob),
-      cleanTxt(p.address),
-      cleanTxt(p.diag)
-    ]),
-    styles:{font:'helvetica',fontSize:8,cellPadding:3},
-    headStyles:{fillColor:[59,130,246],textColor:255,fontStyle:'bold'},
-    alternateRowStyles:{fillColor:[245,247,250]},
-    columnStyles:{6:{cellWidth:50}},
-    margin:{left:14,right:14}
-  });
-  doc.save(`patients_${now.replace(/\//g,'-')}.pdf`);
-  toast(t('btn_pdf')+' ✓');
-}
-
-// ── BACKUP ────────────────────────────────────────────────────
-function expBak(){
-  const data=load();
-  if(!data.length){toast(t('no_data'),'err');return;}
-  const blob=new Blob([JSON.stringify({v:1,date:new Date().toISOString(),patients:data},null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;
-  a.download=`patients_backup_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();URL.revokeObjectURL(url);
-  toast(t('toast_bak'));
-}
-
-function impBak(ev){
-  const file=ev.target.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const parsed=JSON.parse(e.target.result);
-      const inc=parsed.patients||(Array.isArray(parsed)?parsed:null);
-      if(!inc){toast(t('toast_err'),'err');return;}
-      const cur=load();
-      const ids=new Set(cur.map(p=>p.id));
-      const add=inc.filter(p=>!ids.has(p.id));
-      save([...add,...cur]);
-      updBadge();doSearch();renderStats();
-      toast(`${t('toast_imp')} (+${add.length})`);
-    }catch{toast(t('toast_err'),'err');}
-  };
-  r.readAsText(file);ev.target.value='';
-}
-
-// ── BADGE + INIT ──────────────────────────────────────────────
-function updBadge(){document.getElementById('cbadge').textContent=load().length;}
-setLang(lang);
-updBadge();
-</script>
-</body>
-</html>
+    if(m){const yr=m[1].length===2?'20'+m[1]:m[1];y[yr]=(y[y
