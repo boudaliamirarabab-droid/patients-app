@@ -354,84 +354,83 @@ mark{background:rgba(59,130,246,.3);color:var(--accent2);border-radius:3px;paddi
 
 <div id="toast"></div>
 
-<!-- Firebase SDK -->
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+<!-- Firebase SDK compat (no module) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  const firebaseConfig = {
+    apiKey: "AIzaSyAC-u059tq8sW0fAYUD0ICFsl3BnOBjd7k",
+    authDomain: "hopital-app-b624e.firebaseapp.com",
+    projectId: "hopital-app-b624e",
+    storageBucket: "hopital-app-b624e.firebasestorage.app",
+    messagingSenderId: "1001139113856",
+    appId: "1:1001139113856:web:873273d45f77c0565cfb65"
+  };
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAC-u059tq8sW0fAYUD0ICFsl3BnOBjd7k",
-  authDomain: "hopital-app-b624e.firebaseapp.com",
-  projectId: "hopital-app-b624e",
-  storageBucket: "hopital-app-b624e.firebasestorage.app",
-  messagingSenderId: "1001139113856",
-  appId: "1:1001139113856:web:873273d45f77c0565cfb65"
-};
+  firebase.initializeApp(firebaseConfig);
+  const db  = firebase.firestore();
+  const COL = 'patients';
 
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-const COL = 'patients';
+  function setSyncState(state, msg){
+    const bar = document.getElementById('syncbar');
+    const txt = document.getElementById('syncmsg');
+    if(bar) bar.className = state;
+    if(txt) txt.textContent = msg;
+  }
 
-// ── حالة الاتصال ──────────────────────────────────────────────
-function setSyncState(state, msg){
-  const bar = document.getElementById('syncbar');
-  const txt = document.getElementById('syncmsg');
-  bar.className = state;
-  txt.textContent = msg;
-}
+  const saveLocal = d => localStorage.setItem('patients_db', JSON.stringify(d));
 
-// ── كاش محلي + Firebase ──────────────────────────────────────
-const KEY = 'patients_db';
-const loadLocal = () => { try{ return JSON.parse(localStorage.getItem(KEY))||[]; }catch{ return[]; } };
-const saveLocal = d => localStorage.setItem(KEY, JSON.stringify(d));
+  setSyncState('syncing', '⏳ جاري الاتصال...');
 
-// نستمع لـ Firestore real-time
-setSyncState('syncing', window._T ? window._T('sync_connecting') : 'جاري الاتصال...');
-
-const q = query(collection(db, COL), orderBy('createdAt','desc'));
-onSnapshot(q,
-  snap => {
-    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    saveLocal(data);
-    window._fbReady = true;
-    setSyncState('online', window._T ? window._T('sync_online') : '🟢 متصل — البيانات محدّثة');
-    window.updBadge();
-    if(document.getElementById('s-search').classList.contains('on')){
-      window.doSearch();
-      window.renderStats();
+  db.collection(COL).orderBy('createdAt','desc').onSnapshot(
+    snap => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      saveLocal(data);
+      window._fbReady = true;
+      const msg = window._T ? window._T('sync_online') : '🟢 متصل — البيانات محدّثة';
+      setSyncState('online', msg);
+      if(window.updBadge) window.updBadge();
+      if(document.getElementById('s-search') &&
+         document.getElementById('s-search').classList.contains('on')){
+        if(window.doSearch) window.doSearch();
+        if(window.renderStats) window.renderStats();
+      }
+    },
+    err => {
+      console.warn('Firestore offline:', err);
+      const msg = window._T ? window._T('sync_offline') : '🔴 غير متصل — يعمل محلياً';
+      setSyncState('offline', msg);
     }
-  },
-  err => {
-    console.warn('Firestore offline:', err);
-    setSyncState('offline', window._T ? window._T('sync_offline') : '🔴 غير متصل — يعمل محلياً');
-  }
-);
+  );
 
-// ── عمليات Firestore ──────────────────────────────────────────
-window._fbAdd = async (patient) => {
-  setSyncState('syncing', '⏳ جاري الحفظ...');
-  const { id, ...data } = patient;
-  await setDoc(doc(db, COL, id), data);
-};
+  window._fbAdd = async (patient) => {
+    setSyncState('syncing', '⏳ جاري الحفظ...');
+    const { id, ...data } = patient;
+    await db.collection(COL).doc(id).set(data);
+  };
 
-window._fbUpdate = async (id, patient) => {
-  setSyncState('syncing', '⏳ جاري التحديث...');
-  const { id: _id, ...data } = patient;
-  await updateDoc(doc(db, COL, id), data);
-};
+  window._fbUpdate = async (id, patient) => {
+    setSyncState('syncing', '⏳ جاري التحديث...');
+    const { id: _id, ...data } = patient;
+    await db.collection(COL).doc(id).update(data);
+  };
 
-window._fbDelete = async (id) => {
-  setSyncState('syncing', '⏳ جاري الحذف...');
-  await deleteDoc(doc(db, COL, id));
-};
+  window._fbDelete = async (id) => {
+    setSyncState('syncing', '⏳ جاري الحذف...');
+    await db.collection(COL).doc(id).delete();
+  };
 
-window._fbImport = async (patients) => {
-  setSyncState('syncing', '⏳ جاري الاستيراد...');
-  for(const p of patients){
-    const { id, ...data } = p;
-    await setDoc(doc(db, COL, id), data);
-  }
-};
+  window._fbImport = async (patients) => {
+    setSyncState('syncing', '⏳ جاري الاستيراد...');
+    const batch = db.batch();
+    patients.forEach(p => {
+      const { id, ...data } = p;
+      batch.set(db.collection(COL).doc(id), data);
+    });
+    await batch.commit();
+  };
+})();
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -691,4 +690,188 @@ function getYS(data){
   const y={};
   data.forEach(p=>{
     const m=(p.fileNum||'').match(/\/(\d{2,4})$/);
-    if(m){const yr=m[1].length===2?'20'+m[1]:m[1];y[yr]=(y[y
+    if(m){const yr=m[1].length===2?'20'+m[1]:m[1];y[yr]=(y[yr]||0)+1;}
+  });
+  return y;
+}
+
+function renderStats(){
+  const data=load();
+  const ys=getYS(data);
+  const ny=Object.keys(ys).length;
+  document.getElementById('sgrid').innerHTML=`
+    <div class="scard"><div class="snum">${data.length}</div><div class="slbl">${t('stat_total')}</div></div>
+    <div class="scard"><div class="snum" style="color:var(--accent2)">${ny}</div><div class="slbl">${t('stat_years')}</div></div>`;
+  const sorted=Object.entries(ys).sort((a,b)=>a[0].localeCompare(b[0]));
+  document.getElementById('ys').innerHTML=sorted.map(([y,c])=>
+    `<div class="ypill">📅 ${t('yr')} <strong>${y}</strong> — <strong style="color:var(--accent)">${c}</strong> ${t('fl')}</div>`
+  ).join('');
+}
+
+// ── SEARCH ────────────────────────────────────────────────────
+function hl(txt,q){
+  if(!q||!txt)return txt||'';
+  return txt.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`,'gi'),'<mark>$1</mark>');
+}
+function fmtD(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
+
+function doSearch(){
+  const sf=(document.getElementById('sf')?.value||'').trim().toLowerCase();
+  const sp=(document.getElementById('sp')?.value||'').trim().toLowerCase();
+  const sn=(document.getElementById('sn')?.value||'').trim().toLowerCase();
+  const sh=(document.getElementById('sh')?.value||'').trim();
+  const sa=(document.getElementById('sa')?.value||'').trim().toLowerCase();
+  const sg=(document.getElementById('sg')?.value||'').trim().toLowerCase();
+  const sd=(document.getElementById('sd')?.value||'');
+  const sb=(document.getElementById('sb')?.value||'');
+  const data=load();
+  const res=data.filter(p=>{
+    if(sf&&!(p.fileNum ||'').toLowerCase().includes(sf))return false;
+    if(sp&&!(p.prenom  ||'').toLowerCase().includes(sp))return false;
+    if(sn&&!(p.nom     ||'').toLowerCase().includes(sn))return false;
+    if(sh&&!(p.phone   ||'').includes(sh))return false;
+    if(sa&&!(p.address ||'').toLowerCase().includes(sa))return false;
+    if(sg&&!(p.diag    ||'').toLowerCase().includes(sg))return false;
+    if(sd&&p.dob!==sd)return false;
+    if(sb&&p.blood!==sb)return false;
+    return true;
+  });
+  document.getElementById('rc').textContent=res.length;
+  const list=document.getElementById('plist');
+  if(!res.length){
+    list.innerHTML=`<div class="empty"><div class="ico">🔍</div><p>${t('no_res')}</p></div>`;
+    return;
+  }
+  list.innerHTML=res.map(p=>`
+    <div class="pc">
+      <div class="pch">
+        <div>
+          <div class="pcn">${hl(p.prenom,sp)||'—'} ${hl(p.nom,sn)||''}</div>
+          <div class="pcf">📁 ${hl(p.fileNum,sf)||'—'}</div>
+        </div>
+        <div class="pca">
+          <button class="btn be sm" onclick="openEdit('${p.id}')">✏️</button>
+          <button class="btn bd sm" onclick="delP('${p.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="pci">
+        <div class="pf"><div class="pl">📞 ${t('lbl_phone')}</div><div class="pv" style="direction:ltr;text-align:right">${hl(p.phone,sh)||'—'}</div></div>
+        <div class="pf"><div class="pl">🎂 ${t('lbl_dob')}</div><div class="pv">${fmtD(p.dob)}</div></div>
+        <div class="pf"><div class="pl">🩸 ${t('lbl_blood')}</div><div class="pv">${p.blood?`<span class="blood-badge">${p.blood}</span>`:'—'}</div></div>
+        <div class="pf"><div class="pl">📍 ${t('lbl_address')}</div><div class="pv">${hl(p.address,sa)||'—'}</div></div>
+        <div class="pf pfu"><div class="pl">🩺 ${t('lbl_diag')}</div><div class="pv"><span class="bdg">${hl(p.diag,sg)||'—'}</span></div></div>
+      </div>
+    </div>`).join('');
+}
+
+function clrS(){
+  ['sf','sp','sn','sh','sa','sg','sd'].forEach(id=>{
+    const e=document.getElementById(id);if(e)e.value='';
+  });
+  document.getElementById('sb').value='';
+  doSearch();
+}
+
+// ── PDF ───────────────────────────────────────────────────────
+function cleanTxt(str){
+  return (str||'').replace(/[^\x00-\x7E\u00C0-\u024F]/g,'?');
+}
+function expPDF(){
+  const data=load();
+  if(!data.length){toast(t('no_data'),'err');return;}
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  const now=new Date().toLocaleDateString('fr-DZ');
+  const ys=getYS(data);
+  const yst=Object.entries(ys).sort().map(([y,c])=>`${y}: ${c}`).join('  |  ');
+  doc.setFontSize(15);doc.setTextColor(40,40,40);
+  doc.text('Liste des Patients',148,16,{align:'center'});
+  doc.setFontSize(9);doc.setTextColor(100,100,100);
+  doc.text(`Date: ${now}`,14,24);
+  doc.text(`Total: ${data.length}`,14,29);
+  doc.text(yst,14,34);
+  doc.autoTable({
+    startY:38,
+    head:[[' # ','N° Dossier','Prenom & Nom','Tel.','Date naiss.','Groupe','Adresse','Diagnostic']],
+    body:data.map((p,i)=>[
+      i+1,
+      cleanTxt(p.fileNum),
+      cleanTxt(`${p.prenom||''} ${p.nom||''}`.trim()),
+      cleanTxt(p.phone),
+      fmtD(p.dob),
+      p.blood||'—',
+      cleanTxt(p.address),
+      cleanTxt(p.diag)
+    ]),
+    styles:{font:'helvetica',fontSize:8,cellPadding:3},
+    headStyles:{fillColor:[59,130,246],textColor:255,fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[245,247,250]},
+    columnStyles:{7:{cellWidth:45}},
+    margin:{left:14,right:14}
+  });
+  doc.save(`patients_${now.replace(/\//g,'-')}.pdf`);
+  toast(t('btn_pdf')+' ✓');
+}
+
+// ── BACKUP ────────────────────────────────────────────────────
+function expBak(){
+  const data=load();
+  if(!data.length){toast(t('no_data'),'err');return;}
+  const blob=new Blob([JSON.stringify({v:2,date:new Date().toISOString(),patients:data},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download=`patients_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();URL.revokeObjectURL(url);
+  toast(t('toast_bak'));
+}
+
+async function impBak(ev){
+  const file=ev.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=async e=>{
+    try{
+      const parsed=JSON.parse(e.target.result);
+      const inc=parsed.patients||(Array.isArray(parsed)?parsed:null);
+      if(!inc){toast(t('toast_err'),'err');return;}
+      const cur=load();
+      const ids=new Set(cur.map(p=>p.id));
+      const add=inc.filter(p=>!ids.has(p.id));
+      if(add.length){
+        try{
+          await window._fbImport(add);
+        }catch{
+          localStorage.setItem(KEY,JSON.stringify([...add,...cur]));
+          updBadge();doSearch();renderStats();
+        }
+      }
+      toast(`${t('toast_imp')} (+${add.length})`);
+    }catch{toast(t('toast_err'),'err');}
+  };
+  r.readAsText(file);ev.target.value='';
+}
+
+// ── BADGE + INIT ──────────────────────────────────────────────
+function updBadge(){document.getElementById('cbadge').textContent=load().length;}
+window.updBadge = updBadge;
+window.doSearch = doSearch;
+window.renderStats = renderStats;
+window.openEdit = openEdit;
+window.delP = delP;
+window.addP = addP;
+window.saveEdit = saveEdit;
+window.closeM = closeM;
+window.clrF = clrF;
+window.clrS = clrS;
+window.expPDF = expPDF;
+window.expBak = expBak;
+window.impBak = impBak;
+window.switchTab = switchTab;
+window.aci = aci;
+window.acSel = acSel;
+window.setLang = setLang;
+
+setLang(lang);
+updBadge();
+</script>
+</body>
+</html>
