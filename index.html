@@ -354,85 +354,6 @@ mark{background:rgba(59,130,246,.3);color:var(--accent2);border-radius:3px;paddi
 
 <div id="toast"></div>
 
-<!-- Firebase SDK compat (no module) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-<script>
-(function(){
-  const firebaseConfig = {
-    apiKey: "AIzaSyAC-u059tq8sW0fAYUD0ICFsl3BnOBjd7k",
-    authDomain: "hopital-app-b624e.firebaseapp.com",
-    projectId: "hopital-app-b624e",
-    storageBucket: "hopital-app-b624e.firebasestorage.app",
-    messagingSenderId: "1001139113856",
-    appId: "1:1001139113856:web:873273d45f77c0565cfb65"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db  = firebase.firestore();
-  const COL = 'patients';
-
-  function setSyncState(state, msg){
-    const bar = document.getElementById('syncbar');
-    const txt = document.getElementById('syncmsg');
-    if(bar) bar.className = state;
-    if(txt) txt.textContent = msg;
-  }
-
-  const saveLocal = d => localStorage.setItem('patients_db', JSON.stringify(d));
-
-  setSyncState('syncing', '⏳ جاري الاتصال...');
-
-  db.collection(COL).orderBy('createdAt','desc').onSnapshot(
-    snap => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      saveLocal(data);
-      window._fbReady = true;
-      const msg = window._T ? window._T('sync_online') : '🟢 متصل — البيانات محدّثة';
-      setSyncState('online', msg);
-      if(window.updBadge) window.updBadge();
-      if(document.getElementById('s-search') &&
-         document.getElementById('s-search').classList.contains('on')){
-        if(window.doSearch) window.doSearch();
-        if(window.renderStats) window.renderStats();
-      }
-    },
-    err => {
-      console.warn('Firestore offline:', err);
-      const msg = window._T ? window._T('sync_offline') : '🔴 غير متصل — يعمل محلياً';
-      setSyncState('offline', msg);
-    }
-  );
-
-  window._fbAdd = async (patient) => {
-    setSyncState('syncing', '⏳ جاري الحفظ...');
-    const { id, ...data } = patient;
-    await db.collection(COL).doc(id).set(data);
-  };
-
-  window._fbUpdate = async (id, patient) => {
-    setSyncState('syncing', '⏳ جاري التحديث...');
-    const { id: _id, ...data } = patient;
-    await db.collection(COL).doc(id).update(data);
-  };
-
-  window._fbDelete = async (id) => {
-    setSyncState('syncing', '⏳ جاري الحذف...');
-    await db.collection(COL).doc(id).delete();
-  };
-
-  window._fbImport = async (patients) => {
-    setSyncState('syncing', '⏳ جاري الاستيراد...');
-    const batch = db.batch();
-    patients.forEach(p => {
-      const { id, ...data } = p;
-      batch.set(db.collection(COL).doc(id), data);
-    });
-    await batch.commit();
-  };
-})();
-</script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
@@ -872,6 +793,85 @@ window.setLang = setLang;
 
 setLang(lang);
 updBadge();
+</script>
+
+<!-- Firebase SDK compat — يجي في الآخر بعد كل الكود -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  const firebaseConfig = {
+    apiKey: "AIzaSyAC-u059tq8sW0fAYUD0ICFsl3BnOBjd7k",
+    authDomain: "hopital-app-b624e.firebaseapp.com",
+    projectId: "hopital-app-b624e",
+    storageBucket: "hopital-app-b624e.firebasestorage.app",
+    messagingSenderId: "1001139113856",
+    appId: "1:1001139113856:web:873273d45f77c0565cfb65"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db  = firebase.firestore();
+  const COL = 'patients';
+
+  function setSyncState(state, msg){
+    const bar = document.getElementById('syncbar');
+    const txt = document.getElementById('syncmsg');
+    if(bar) bar.className = state;
+    if(txt) txt.textContent = msg;
+  }
+
+  const saveLocal = d => localStorage.setItem('patients_db', JSON.stringify(d));
+
+  setSyncState('syncing', '⏳ جاري الاتصال...');
+
+  db.collection(COL).orderBy('createdAt','desc').onSnapshot(
+    snap => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      saveLocal(data);
+      window._fbReady = true;
+      const msg = window._T ? window._T('sync_online') : '🟢 متصل — البيانات محدّثة';
+      setSyncState('online', msg);
+      if(window.updBadge) window.updBadge();
+      if(document.getElementById('s-search') &&
+         document.getElementById('s-search').classList.contains('on')){
+        if(window.doSearch) window.doSearch();
+        if(window.renderStats) window.renderStats();
+      }
+    },
+    err => {
+      console.warn('Firestore offline:', err);
+      const msg = window._T ? window._T('sync_offline') : '🔴 غير متصل — يعمل محلياً';
+      setSyncState('offline', msg);
+    }
+  );
+
+  window._fbAdd = async (patient) => {
+    setSyncState('syncing', '⏳ جاري الحفظ...');
+    const { id, ...data } = patient;
+    await db.collection(COL).doc(id).set(data);
+  };
+
+  window._fbUpdate = async (id, patient) => {
+    setSyncState('syncing', '⏳ جاري التحديث...');
+    const { id: _id, ...data } = patient;
+    await db.collection(COL).doc(id).update(data);
+  };
+
+  window._fbDelete = async (id) => {
+    setSyncState('syncing', '⏳ جاري الحذف...');
+    await db.collection(COL).doc(id).delete();
+  };
+
+  window._fbImport = async (patients) => {
+    setSyncState('syncing', '⏳ جاري الاستيراد...');
+    const batch = db.batch();
+    patients.forEach(p => {
+      const { id, ...data } = p;
+      batch.set(db.collection(COL).doc(id), data);
+    });
+    await batch.commit();
+  };
+})();
 </script>
 </body>
 </html>
